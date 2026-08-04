@@ -93,4 +93,10 @@ Runs on **8000** locally (`php artisan serve --port=8000`).
 
 ## Deployment
 
-Paused (Module 9) — see the umbrella repo's `plan.md`. Live URL will be added here once deployed.
+Live on Render: **https://task-management-laravel-api-jryf.onrender.com/api**
+
+- Render Web Service, Docker runtime (`Dockerfile` in repo root — Render has no native PHP buildpack). Base image is `php:8.4-cli-alpine`; `composer.lock` resolved several `symfony/*` transitive deps requiring PHP ≥8.4.1, so the image tracks that rather than the `^8.2` floor in `composer.json`.
+- Start command runs `php artisan migrate --force && php artisan config:cache` before serving, so schema changes apply automatically on every deploy.
+- DB is Render managed Postgres (`task-management-postgre-db`). All secrets (`APP_KEY`, `DB_*`, `JWT_SECRET`, `INTERNAL_SERVICE_TOKEN`, etc.) are set in Render's dashboard, never in the repo.
+- Seeded once manually after the first successful migration (`DatabaseSeeder` isn't idempotent — don't re-run it against prod).
+- Health check: `GET /up`.
