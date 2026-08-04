@@ -69,6 +69,14 @@ Node-to-Laravel calls use two patterns:
 
 Task status transitions: `pending → {in_progress, cancelled}`, `in_progress → {completed, pending}`, `completed`/`cancelled` are terminal. An invalid transition returns `422`.
 
+## Rate limiting
+
+All `/api/*` routes are throttled via Laravel's built-in `throttle` middleware, keyed per-user (JWT) or per-IP for unauthenticated requests:
+- `/api/register` and `/api/login` — **5 requests/minute** (brute-force/credential-stuffing protection on the only unauthenticated routes).
+- Everything else — **60 requests/minute**.
+
+A `429 Too Many Requests` is returned once the limit is hit, with `X-RateLimit-*` headers on every response.
+
 ## API docs (Swagger/OpenAPI)
 
 Generated via `darkaonline/l5-swagger` from PHP attributes on the controllers.

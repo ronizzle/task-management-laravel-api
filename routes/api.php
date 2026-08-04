@@ -6,14 +6,21 @@ use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+// Login/register get a tighter limit than the rest of the API — they're the
+// only unauthenticated routes and the ones brute-force/credential-stuffing
+// attempts would hit.
+Route::middleware('throttle:5,1')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+});
+
+// Every other route also carries the default API throttle applied below.
 
 // Reads reachable by either an authenticated user (JWT) or Node's cron jobs
 // via the shared INTERNAL_SERVICE_TOKEN header — see EnsureInternalOrJwt.
 // EnsureRole treats the internal service as a trusted system actor and lets
 // it through regardless of the roles listed.
-Route::middleware('internal.or.jwt')->group(function () {
+Route::middleware(['throttle:60,1', 'internal.or.jwt'])->group(function () {
     Route::middleware('role:admin,manager')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
         Route::get('/teams', [TeamController::class, 'index']);
@@ -26,7 +33,7 @@ Route::middleware('internal.or.jwt')->group(function () {
 
 // Writes stay strictly user-JWT-only — cron jobs never create/modify data
 // other than archiving, which is handled above.
-Route::middleware('auth:api')->group(function () {
+Route::middleware(['throttle:60,1', 'auth:api'])->group(function () {
     Route::middleware('role:admin,manager')->group(function () {
         Route::post('/users', [UserController::class, 'store']);
     });
@@ -47,4 +54,4 @@ Route::middleware('auth:api')->group(function () {
     Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus']);
 });
 
-Route::get('/tasks/{task}', [TaskController::class, 'show'])->middleware('auth:api');
+Route::get('/tasks/{task}', [TaskController::class, 'show'])->middleware(['throttle:60,1', 'auth:api']);
