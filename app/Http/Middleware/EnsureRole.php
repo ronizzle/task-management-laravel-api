@@ -15,6 +15,12 @@ class EnsureRole
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
+        // Node's cron jobs (trusted system actor) bypass role checks — they
+        // authenticated via EnsureInternalOrJwt's X-Internal-Token branch.
+        if ($request->attributes->get('is_internal_service')) {
+            return $next($request);
+        }
+
         $user = $request->user();
 
         if (! $user || ! in_array($user->role, $roles, true)) {

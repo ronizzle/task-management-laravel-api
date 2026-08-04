@@ -39,7 +39,7 @@ class TaskController extends Controller
 
         $query = $team->tasks()->whereNull('archived_at');
 
-        if ($request->user()->isTeamMember()) {
+        if ($request->user()?->isTeamMember()) {
             $query->where('assigned_to', $request->user()->id);
         }
 
@@ -243,7 +243,7 @@ class TaskController extends Controller
 
     private function authorizeTeamAccess(Request $request, Team $team): void
     {
-        if ($request->user()->isAdmin()) {
+        if ($request->attributes->get('is_internal_service') || $request->user()->isAdmin()) {
             return;
         }
 

@@ -41,7 +41,7 @@ class UserController extends Controller
         }
 
         // Managers only see members of their own teams.
-        if ($request->user()->isManager()) {
+        if ($request->user()?->isManager()) {
             $teamIds = $request->user()->teams()->pluck('teams.id');
             $query->whereHas('teams', fn ($q) => $q->whereIn('teams.id', $teamIds));
         }

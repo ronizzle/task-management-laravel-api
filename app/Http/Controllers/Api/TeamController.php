@@ -29,7 +29,7 @@ class TeamController extends Controller
     {
         $query = Team::query();
 
-        if ($request->user()->isManager()) {
+        if ($request->user()?->isManager()) {
             $query->whereHas('members', fn ($q) => $q->where('user_id', $request->user()->id));
         }
 
