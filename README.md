@@ -94,6 +94,10 @@ An audit trail of who did what, when, across tasks/teams/users — a dedicated `
 
 `subject_type` stores a short alias (`task`/`team`/`user`) via an Eloquent morph map rather than the full class name. `GET /api/activity-logs` returns entries newest-first; Admins see everything, Managers see only entries scoped to their own teams (`team_id`), Team Members get a `403`. Covered by `tests/Feature/ActivityLogTest.php` (7 tests: task-create/status-change/delete logging with correct fields and diffs, admin sees all, manager scoped to own teams, team member forbidden, unauthenticated rejected).
 
+## Real-time updates (Socket.IO, bonus)
+
+After every relevant task/comment write (create, update, status change, delete, archive), `App\Services\RealtimeBroadcaster::broadcast()` fires a best-effort `POST` to Node's `/api/realtime/broadcast` (internal-token protected), which relays it to connected Socket.IO clients. A failed/unreachable call is caught and logged — it never fails the underlying request. See `task-management-node-services`' README for the client-facing side (auth handshake, rooms, event names). Covered by `tests/Feature/RealtimeBroadcastTest.php` (4 tests, using `Http::fake()`: task-create broadcasts to the team room, status-change broadcasts to both task and team rooms, comment-create broadcasts to the task room, and a failed broadcast doesn't fail the task request).
+
 ## API docs (Swagger/OpenAPI)
 
 Generated via `darkaonline/l5-swagger` from PHP attributes on the controllers.
@@ -110,7 +114,7 @@ View at `http://localhost:8000/api/documentation`. The generated spec (`storage/
 php artisan test
 ```
 
-43 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation), rate limiting (login/register throttle, general API throttle, `Retry-After` header), request/response logging (status/user/duration captured, body never logged), and the activity log (write-side logging on task/team/user actions, admin-vs-manager visibility scoping, team member forbidden). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
+47 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation), rate limiting (login/register throttle, general API throttle, `Retry-After` header), request/response logging (status/user/duration captured, body never logged), the activity log (write-side logging on task/team/user actions, admin-vs-manager visibility scoping, team member forbidden), and real-time broadcasting (correct room/event on task/comment writes, failure isolation). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
 
 ## Port
 

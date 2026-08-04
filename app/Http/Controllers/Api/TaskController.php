@@ -9,6 +9,7 @@ use App\Http\Requests\Task\UpdateTaskStatusRequest;
 use App\Models\Task;
 use App\Models\Team;
 use App\Services\ActivityLogger;
+use App\Services\RealtimeBroadcaster;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -104,6 +105,8 @@ class TaskController extends Controller
             $team->id,
         );
 
+        RealtimeBroadcaster::broadcast("team:{$team->id}", 'task_created', $task->toArray());
+
         return response()->json($task, 201);
     }
 
@@ -165,6 +168,9 @@ class TaskController extends Controller
             ['before' => $before, 'after' => $task->only(array_keys($request->validated()))],
         );
 
+        RealtimeBroadcaster::broadcast("task:{$task->id}", 'task_updated', $task->toArray());
+        RealtimeBroadcaster::broadcast("team:{$task->team_id}", 'task_updated', $task->toArray());
+
         return response()->json($task);
     }
 
@@ -194,6 +200,9 @@ class TaskController extends Controller
             "Deleted task \"{$task->title}\"",
             $task->team_id,
         );
+
+        RealtimeBroadcaster::broadcast("task:{$task->id}", 'task_deleted', ['id' => $task->id]);
+        RealtimeBroadcaster::broadcast("team:{$task->team_id}", 'task_deleted', ['id' => $task->id]);
 
         $task->delete();
 
@@ -247,6 +256,10 @@ class TaskController extends Controller
             ['before' => $oldStatus, 'after' => $newStatus],
         );
 
+        $statusPayload = ['id' => $task->id, 'status' => $newStatus, 'previous_status' => $oldStatus];
+        RealtimeBroadcaster::broadcast("task:{$task->id}", 'task_status_changed', $statusPayload);
+        RealtimeBroadcaster::broadcast("team:{$task->team_id}", 'task_status_changed', $statusPayload);
+
         return response()->json($task);
     }
 
@@ -282,6 +295,8 @@ class TaskController extends Controller
             "Archived task \"{$task->title}\"",
             $task->team_id,
         );
+
+        RealtimeBroadcaster::broadcast("team:{$task->team_id}", 'task_archived', ['id' => $task->id]);
 
         return response()->json($task);
     }

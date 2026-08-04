@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Comment\StoreCommentRequest;
 use App\Models\Comment;
 use App\Models\Task;
+use App\Services\RealtimeBroadcaster;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -58,7 +59,11 @@ class CommentController extends Controller
             'user_id' => $request->user()->id,
         ]);
 
-        return response()->json($comment->load('user:id,name,email'), 201);
+        $comment->load('user:id,name,email');
+
+        RealtimeBroadcaster::broadcast("task:{$task->id}", 'comment_created', $comment->toArray());
+
+        return response()->json($comment, 201);
     }
 
     #[OA\Delete(
@@ -81,6 +86,8 @@ class CommentController extends Controller
         if (! $request->user()->isAdmin() && ! $isAuthor) {
             abort(403, 'Only the author or an admin may delete this comment.');
         }
+
+        RealtimeBroadcaster::broadcast("task:{$comment->task_id}", 'comment_deleted', ['id' => $comment->id]);
 
         $comment->delete();
 
