@@ -1,4 +1,4 @@
-FROM php:8.2-cli-alpine
+FROM php:8.4-cli-alpine
 
 RUN apk add --no-cache postgresql-dev $PHPIZE_DEPS \
     && docker-php-ext-install pdo pdo_pgsql pgsql bcmath \
