@@ -69,6 +69,16 @@ Node-to-Laravel calls use two patterns:
 
 Task status transitions: `pending → {in_progress, cancelled}`, `in_progress → {completed, pending}`, `completed`/`cancelled` are terminal. An invalid transition returns `422`.
 
+## API docs (Swagger/OpenAPI)
+
+Generated via `darkaonline/l5-swagger` from PHP attributes on the controllers.
+
+```bash
+php artisan l5-swagger:generate
+```
+
+View at `http://localhost:8000/api/documentation`. The generated spec (`storage/api-docs`) is gitignored and regenerated on demand rather than committed.
+
 ## Tests
 
 ```bash

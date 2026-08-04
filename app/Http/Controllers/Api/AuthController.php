@@ -10,9 +10,31 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use OpenApi\Attributes as OA;
 
 class AuthController extends Controller
 {
+    #[OA\Post(
+        path: '/api/register',
+        tags: ['Auth'],
+        summary: 'Register a new team_member account',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['name', 'email', 'password', 'password_confirmation'],
+                properties: [
+                    new OA\Property(property: 'name', type: 'string', example: 'Jane Doe'),
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'jane@test.com'),
+                    new OA\Property(property: 'password', type: 'string', format: 'password', example: 'password123'),
+                    new OA\Property(property: 'password_confirmation', type: 'string', format: 'password', example: 'password123'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Registered, returns JWT'),
+            new OA\Response(response: 422, description: 'Validation error'),
+        ]
+    )]
     public function register(RegisterRequest $request): JsonResponse
     {
         $user = DB::transaction(function () use ($request) {
@@ -30,6 +52,25 @@ class AuthController extends Controller
         return $this->tokenResponse($token, $user, 201);
     }
 
+    #[OA\Post(
+        path: '/api/login',
+        tags: ['Auth'],
+        summary: 'Login and receive a JWT',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['email', 'password'],
+                properties: [
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'admin@test.com'),
+                    new OA\Property(property: 'password', type: 'string', format: 'password', example: 'password123'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Returns JWT'),
+            new OA\Response(response: 422, description: 'Invalid credentials or deactivated account'),
+        ]
+    )]
     public function login(LoginRequest $request): JsonResponse
     {
         $credentials = $request->validated();

@@ -7,6 +7,7 @@
 /public/hot
 /public/storage
 /storage/*.key
+/storage/api-docs
 /bootstrap/cache/*.php
 .phpunit.result.cache
 docker-compose.override.yml
