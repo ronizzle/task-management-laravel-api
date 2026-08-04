@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureInternalOrJwt;
 use App\Http\Middleware\EnsureInternalServiceToken;
 use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\LogApiRequests;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -27,6 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->redirectGuestsTo(fn () => null);
+
+        $middleware->api(append: [
+            LogApiRequests::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function (AuthenticationException $e, Request $request) {

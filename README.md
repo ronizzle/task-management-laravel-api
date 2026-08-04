@@ -79,6 +79,10 @@ All `/api/*` routes are throttled via Laravel's built-in `throttle` middleware, 
 
 A `429 Too Many Requests` is returned once the limit is hit, with `X-RateLimit-*` headers on every response.
 
+## Request/response logging (bonus)
+
+Every `/api/*` request is logged (one line per request) to a dedicated `api` log channel — `storage/logs/api-{date}.log`, daily-rotated, kept 14 days. Logged: method, path, response status, duration in ms, authenticated user id (`null` if unauthenticated), and IP. The request/response body is never logged, so passwords, tokens, and comment/task content can't leak into the log file.
+
 ## API docs (Swagger/OpenAPI)
 
 Generated via `darkaonline/l5-swagger` from PHP attributes on the controllers.
@@ -95,7 +99,7 @@ View at `http://localhost:8000/api/documentation`. The generated spec (`storage/
 php artisan test
 ```
 
-33 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation), and rate limiting (login/register throttle, general API throttle, `Retry-After` header). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
+36 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation), rate limiting (login/register throttle, general API throttle, `Retry-After` header), and request/response logging (status/user/duration captured, body never logged). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
 
 ## Port
 
