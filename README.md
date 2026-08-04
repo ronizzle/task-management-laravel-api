@@ -69,6 +69,8 @@ Node-to-Laravel calls use two patterns:
 
 Task status transitions: `pending → {in_progress, cancelled}`, `in_progress → {completed, pending}`, `completed`/`cancelled` are terminal. An invalid transition returns `422`.
 
+**Comments** (bonus): `GET /api/tasks/{task}/comments`, `POST /api/tasks/{task}/comments`, `DELETE /api/comments/{comment}`. Same team/task-access rules as the task itself (Team Members: only tasks assigned to them); deleting is restricted to the comment's author or an Admin.
+
 ## Rate limiting
 
 All `/api/*` routes are throttled via Laravel's built-in `throttle` middleware, keyed per-user (JWT) or per-IP for unauthenticated requests:
@@ -93,7 +95,7 @@ View at `http://localhost:8000/api/documentation`. The generated spec (`storage/
 php artisan test
 ```
 
-18 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, and the internal-service-token guard. Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
+28 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, and task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
 
 ## Port
 
