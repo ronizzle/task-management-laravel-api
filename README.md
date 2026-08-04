@@ -71,6 +71,8 @@ Task status transitions: `pending → {in_progress, cancelled}`, `in_progress �
 
 **Comments** (bonus): `GET /api/tasks/{task}/comments`, `POST /api/tasks/{task}/comments`, `DELETE /api/comments/{comment}`. Same team/task-access rules as the task itself (Team Members: only tasks assigned to them); deleting is restricted to the comment's author or an Admin.
 
+**Activity log** (bonus): `GET /api/activity-logs` — Admin/Manager only (Manager scoped to own teams, Team Member forbidden). Filters: `subject_type` (`task`/`team`/`user`), `subject_id`, `team_id` (Admin only). See "Activity log" below.
+
 ## Rate limiting
 
 All `/api/*` routes are throttled via Laravel's built-in `throttle` middleware, keyed per-user (JWT) or per-IP for unauthenticated requests:
@@ -82,6 +84,15 @@ A `429 Too Many Requests` is returned once the limit is hit, with `X-RateLimit-*
 ## Request/response logging (bonus)
 
 Every `/api/*` request is logged (one line per request) to a dedicated `api` log channel — `storage/logs/api-{date}.log`, daily-rotated, kept 14 days. Logged: method, path, response status, duration in ms, authenticated user id (`null` if unauthenticated), and IP. The request/response body is never logged, so passwords, tokens, and comment/task content can't leak into the log file.
+
+## Activity log (bonus)
+
+An audit trail of who did what, when, across tasks/teams/users — a dedicated `activity_logs` table (`user_id`, `team_id`, `action`, `subject_type`, `subject_id`, `description`, `changes` JSON, timestamps), written via the `App\Services\ActivityLogger` helper called from the relevant controller actions after each write:
+- Tasks: created, updated (before/after diff of changed fields), status_changed (before/after status), deleted, archived.
+- Teams: created, member_added, member_removed.
+- Users: created, updated (before/after diff), status_changed (active/inactive toggle).
+
+`subject_type` stores a short alias (`task`/`team`/`user`) via an Eloquent morph map rather than the full class name. `GET /api/activity-logs` returns entries newest-first; Admins see everything, Managers see only entries scoped to their own teams (`team_id`), Team Members get a `403`. Covered by `tests/Feature/ActivityLogTest.php` (7 tests: task-create/status-change/delete logging with correct fields and diffs, admin sees all, manager scoped to own teams, team member forbidden, unauthenticated rejected).
 
 ## API docs (Swagger/OpenAPI)
 
@@ -99,7 +110,7 @@ View at `http://localhost:8000/api/documentation`. The generated spec (`storage/
 php artisan test
 ```
 
-36 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation), rate limiting (login/register throttle, general API throttle, `Retry-After` header), and request/response logging (status/user/duration captured, body never logged). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
+43 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation), rate limiting (login/register throttle, general API throttle, `Retry-After` header), request/response logging (status/user/duration captured, body never logged), and the activity log (write-side logging on task/team/user actions, admin-vs-manager visibility scoping, team member forbidden). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
 
 ## Port
 

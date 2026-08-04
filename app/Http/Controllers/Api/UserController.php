@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -90,6 +91,13 @@ class UserController extends Controller
             ]);
         });
 
+        ActivityLogger::record(
+            $request->user(),
+            'created',
+            $user,
+            "Created user \"{$user->name}\" ({$user->role})",
+        );
+
         return response()->json($user, 201);
     }
 
@@ -140,7 +148,17 @@ class UserController extends Controller
             abort(403, 'Managers may not assign roles above team_member.');
         }
 
+        $before = $user->only(array_keys($request->validated()));
         $user->update($request->validated());
+
+        ActivityLogger::record(
+            $request->user(),
+            'updated',
+            $user,
+            "Updated user \"{$user->name}\"",
+            null,
+            ['before' => $before, 'after' => $user->only(array_keys($request->validated()))],
+        );
 
         return response()->json($user);
     }
@@ -168,7 +186,17 @@ class UserController extends Controller
             'is_active' => ['required', 'boolean'],
         ]);
 
-        $user->update(['is_active' => $request->boolean('is_active')]);
+        $newStatus = $request->boolean('is_active');
+        $user->update(['is_active' => $newStatus]);
+
+        ActivityLogger::record(
+            $request->user(),
+            'status_changed',
+            $user,
+            "Set user \"{$user->name}\" active status to ".($newStatus ? 'active' : 'inactive'),
+            null,
+            ['is_active' => $newStatus],
+        );
 
         return response()->json($user);
     }

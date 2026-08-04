@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\TaskController;
@@ -30,6 +31,9 @@ Route::middleware(['throttle:60,1', 'internal.or.jwt'])->group(function () {
     Route::get('/teams/{team}', [TeamController::class, 'show']);
     Route::get('/teams/{team}/tasks', [TaskController::class, 'index']);
     Route::delete('/tasks/{task}/archive', [TaskController::class, 'archive']);
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+    });
 });
 
 // Writes stay strictly user-JWT-only — cron jobs never create/modify data

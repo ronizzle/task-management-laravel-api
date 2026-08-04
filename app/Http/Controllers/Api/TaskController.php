@@ -8,6 +8,7 @@ use App\Http\Requests\Task\UpdateTaskRequest;
 use App\Http\Requests\Task\UpdateTaskStatusRequest;
 use App\Models\Task;
 use App\Models\Team;
+use App\Services\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -95,6 +96,14 @@ class TaskController extends Controller
             ]);
         });
 
+        ActivityLogger::record(
+            $request->user(),
+            'created',
+            $task,
+            "Created task \"{$task->title}\"",
+            $team->id,
+        );
+
         return response()->json($task, 201);
     }
 
@@ -144,7 +153,17 @@ class TaskController extends Controller
             abort(403, 'You may only edit tasks assigned to you.');
         }
 
+        $before = $task->only(array_keys($request->validated()));
         $task->update($request->validated());
+
+        ActivityLogger::record(
+            $request->user(),
+            'updated',
+            $task,
+            "Updated task \"{$task->title}\"",
+            $task->team_id,
+            ['before' => $before, 'after' => $task->only(array_keys($request->validated()))],
+        );
 
         return response()->json($task);
     }
@@ -167,6 +186,14 @@ class TaskController extends Controller
         if (! $request->user()->isAdmin() && ! $isCreator) {
             abort(403, 'Only the creator or an admin may delete this task.');
         }
+
+        ActivityLogger::record(
+            $request->user(),
+            'deleted',
+            $task,
+            "Deleted task \"{$task->title}\"",
+            $task->team_id,
+        );
 
         $task->delete();
 
@@ -208,7 +235,17 @@ class TaskController extends Controller
             ]);
         }
 
+        $oldStatus = $task->status;
         $task->update(['status' => $newStatus]);
+
+        ActivityLogger::record(
+            $request->user(),
+            'status_changed',
+            $task,
+            "Changed task \"{$task->title}\" status from {$oldStatus} to {$newStatus}",
+            $task->team_id,
+            ['before' => $oldStatus, 'after' => $newStatus],
+        );
 
         return response()->json($task);
     }
@@ -237,6 +274,14 @@ class TaskController extends Controller
         }
 
         $task->update(['archived_at' => now()]);
+
+        ActivityLogger::record(
+            $request->attributes->get('is_internal_service') ? null : $request->user(),
+            'archived',
+            $task,
+            "Archived task \"{$task->title}\"",
+            $task->team_id,
+        );
 
         return response()->json($task);
     }

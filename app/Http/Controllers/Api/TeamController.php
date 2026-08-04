@@ -7,6 +7,7 @@ use App\Http\Requests\Team\AddTeamMemberRequest;
 use App\Http\Requests\Team\StoreTeamRequest;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -65,6 +66,14 @@ class TeamController extends Controller
             return $team;
         });
 
+        ActivityLogger::record(
+            $request->user(),
+            'created',
+            $team,
+            "Created team \"{$team->name}\"",
+            $team->id,
+        );
+
         return response()->json($team->load('members'), 201);
     }
 
@@ -112,6 +121,16 @@ class TeamController extends Controller
             $request->validated('user_id') => ['role' => $request->validated('role', 'member')],
         ]);
 
+        $addedUser = User::find($request->validated('user_id'));
+
+        ActivityLogger::record(
+            $request->user(),
+            'member_added',
+            $team,
+            "Added \"{$addedUser?->name}\" to team \"{$team->name}\"",
+            $team->id,
+        );
+
         return response()->json($team->load('members'), 201);
     }
 
@@ -134,6 +153,14 @@ class TeamController extends Controller
         $this->authorizeTeamAccess($request, $team);
 
         $team->members()->detach($user->id);
+
+        ActivityLogger::record(
+            $request->user(),
+            'member_removed',
+            $team,
+            "Removed \"{$user->name}\" from team \"{$team->name}\"",
+            $team->id,
+        );
 
         return response()->json(null, 204);
     }
