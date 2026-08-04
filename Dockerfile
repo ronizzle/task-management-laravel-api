@@ -9,12 +9,11 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 COPY . .
 
-RUN composer install --optimize-autoloader --no-interaction \
+RUN composer install --no-dev --optimize-autoloader --no-interaction \
     && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8000
 
 CMD php artisan migrate --force \
-    && php artisan db:seed --force \
     && php artisan config:cache \
     && php artisan serve --host 0.0.0.0 --port ${PORT:-8000}
