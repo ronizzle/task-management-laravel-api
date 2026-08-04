@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BatchTaskController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TeamController;
@@ -54,6 +55,7 @@ Route::middleware(['throttle:60,1', 'auth:api'])->group(function () {
     });
 
     Route::post('/teams/{team}/tasks', [TaskController::class, 'store']);
+    Route::post('/tasks/batch', [BatchTaskController::class, 'handle']);
     Route::patch('/tasks/{task}', [TaskController::class, 'update']);
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);
     Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus']);

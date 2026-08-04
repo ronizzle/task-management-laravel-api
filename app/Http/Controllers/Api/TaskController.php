@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\AuthorizesTasks;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Task\StoreTaskRequest;
 use App\Http\Requests\Task\UpdateTaskRequest;
@@ -18,6 +19,8 @@ use OpenApi\Attributes as OA;
 
 class TaskController extends Controller
 {
+    use AuthorizesTasks;
+
     #[OA\Get(
         path: '/api/teams/{team}/tasks',
         tags: ['Tasks'],
@@ -150,11 +153,7 @@ class TaskController extends Controller
     )]
     public function update(UpdateTaskRequest $request, Task $task): JsonResponse
     {
-        $this->authorizeTaskAccess($request, $task);
-
-        if ($request->user()->isTeamMember() && $task->assigned_to !== $request->user()->id) {
-            abort(403, 'You may only edit tasks assigned to you.');
-        }
+        $this->assertCanEdit($request, $task);
 
         $before = $task->only(array_keys($request->validated()));
         $task->update($request->validated());
@@ -187,11 +186,7 @@ class TaskController extends Controller
     )]
     public function destroy(Request $request, Task $task): JsonResponse
     {
-        $isCreator = $task->created_by === $request->user()->id;
-
-        if (! $request->user()->isAdmin() && ! $isCreator) {
-            abort(403, 'Only the creator or an admin may delete this task.');
-        }
+        $this->assertCanDelete($request, $task);
 
         ActivityLogger::record(
             $request->user(),
@@ -230,11 +225,7 @@ class TaskController extends Controller
     )]
     public function updateStatus(UpdateTaskStatusRequest $request, Task $task): JsonResponse
     {
-        $this->authorizeTaskAccess($request, $task);
-
-        if ($request->user()->isTeamMember() && $task->assigned_to !== $request->user()->id) {
-            abort(403, 'You may only update the status of tasks assigned to you.');
-        }
+        $this->assertCanChangeStatus($request, $task);
 
         $newStatus = $request->validated('status');
 
@@ -299,23 +290,5 @@ class TaskController extends Controller
         RealtimeBroadcaster::broadcast("team:{$task->team_id}", 'task_archived', ['id' => $task->id]);
 
         return response()->json($task);
-    }
-
-    private function authorizeTeamAccess(Request $request, Team $team): void
-    {
-        if ($request->attributes->get('is_internal_service') || $request->user()->isAdmin()) {
-            return;
-        }
-
-        $isMember = $team->members()->where('user_id', $request->user()->id)->exists();
-
-        if (! $isMember) {
-            abort(403, 'You do not have access to this team.');
-        }
-    }
-
-    private function authorizeTaskAccess(Request $request, Task $task): void
-    {
-        $this->authorizeTeamAccess($request, $task->team);
     }
 }

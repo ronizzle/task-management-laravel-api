@@ -65,7 +65,7 @@ Node-to-Laravel calls use two patterns:
 
 **Teams**: `GET /api/teams`, `POST /api/teams`, `GET /api/teams/{id}`, `POST /api/teams/{id}/members`, `DELETE /api/teams/{id}/members/{user_id}`
 
-**Tasks**: `GET /api/teams/{team_id}/tasks`, `POST /api/teams/{team_id}/tasks`, `GET /api/tasks/{id}`, `PATCH /api/tasks/{id}`, `DELETE /api/tasks/{id}`, `PATCH /api/tasks/{id}/status`, `DELETE /api/tasks/{id}/archive`
+**Tasks**: `GET /api/teams/{team_id}/tasks`, `POST /api/teams/{team_id}/tasks`, `GET /api/tasks/{id}`, `PATCH /api/tasks/{id}`, `DELETE /api/tasks/{id}`, `PATCH /api/tasks/{id}/status`, `DELETE /api/tasks/{id}/archive`, `POST /api/tasks/batch` (bonus — see "Batch task operations" below)
 
 Task status transitions: `pending → {in_progress, cancelled}`, `in_progress → {completed, pending}`, `completed`/`cancelled` are terminal. An invalid transition returns `422`.
 
@@ -94,6 +94,17 @@ An audit trail of who did what, when, across tasks/teams/users — a dedicated `
 
 `subject_type` stores a short alias (`task`/`team`/`user`) via an Eloquent morph map rather than the full class name. `GET /api/activity-logs` returns entries newest-first; Admins see everything, Managers see only entries scoped to their own teams (`team_id`), Team Members get a `403`. Covered by `tests/Feature/ActivityLogTest.php` (7 tests: task-create/status-change/delete logging with correct fields and diffs, admin sees all, manager scoped to own teams, team member forbidden, unauthenticated rejected).
 
+## Batch task operations (bonus)
+
+`POST /api/tasks/batch` — `{ task_ids: [...], action: 'update'|'delete'|'status_change'|'assign', ...fields }` — applies one action to many tasks in a single request. Each `task_id` is checked against the *exact same* role/ownership rules as the equivalent single-task endpoint (`App\Http\Controllers\Concerns\AuthorizesTasks`, a trait shared by `TaskController` and `BatchTaskController` so the two can't drift apart). It's partial-success, not all-or-nothing: a task the caller isn't allowed to touch (or an invalid status transition) is reported as a per-task error in the response and doesn't fail the rest of the batch.
+
+- `update` — `title`/`description`/`priority`/`due_date` only (not `status` or `assigned_to` — those are their own actions below).
+- `delete` — creator or Admin only, per task.
+- `status_change` — `status` field, validated per task against `Task::STATUS_TRANSITIONS` exactly like the single-task endpoint; Team Members limited to their own assigned tasks.
+- `assign` — `assigned_to` field, Admin/Manager only.
+
+Response: `{ results: [{ id, ok, message?, task? }], succeeded, failed }`. Each successful task also fires the same `ActivityLogger` and `RealtimeBroadcaster` calls as its single-task equivalent (marked `(batch)` in the activity log description), so the audit trail and live UI updates stay consistent regardless of which endpoint made the change. Covered by `tests/Feature/BatchTaskTest.php` (9 tests: bulk status-change success, per-task failure on an invalid transition without failing the batch, Team Member limited to own tasks, bulk delete ownership rule, bulk update field allowlist, bulk assign role gate, `task_updated` broadcast on assign, unknown task id validation, unauthenticated rejection).
+
 ## Real-time updates (Socket.IO, bonus)
 
 After every relevant task/comment write (create, update, status change, delete, archive), `App\Services\RealtimeBroadcaster::broadcast()` fires a best-effort `POST` to Node's `/api/realtime/broadcast` (internal-token protected), which relays it to connected Socket.IO clients. A failed/unreachable call is caught and logged — it never fails the underlying request. See `task-management-node-services`' README for the client-facing side (auth handshake, rooms, event names). Covered by `tests/Feature/RealtimeBroadcastTest.php` (4 tests, using `Http::fake()`: task-create broadcasts to the team room, status-change broadcasts to both task and team rooms, comment-create broadcasts to the task room, and a failed broadcast doesn't fail the task request).
@@ -114,7 +125,7 @@ View at `http://localhost:8000/api/documentation`. The generated spec (`storage/
 php artisan test
 ```
 
-47 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation), rate limiting (login/register throttle, general API throttle, `Retry-After` header), request/response logging (status/user/duration captured, body never logged), the activity log (write-side logging on task/team/user actions, admin-vs-manager visibility scoping, team member forbidden), and real-time broadcasting (correct room/event on task/comment writes, failure isolation). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
+56 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation), rate limiting (login/register throttle, general API throttle, `Retry-After` header), request/response logging (status/user/duration captured, body never logged), the activity log (write-side logging on task/team/user actions, admin-vs-manager visibility scoping, team member forbidden), real-time broadcasting (correct room/event on task/comment writes, failure isolation), and batch task operations (per-action authorization, partial-success reporting, field allowlisting). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
 
 ## Port
 
