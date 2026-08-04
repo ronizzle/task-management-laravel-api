@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'internal' => [
+        'token' => env('INTERNAL_SERVICE_TOKEN'),
+    ],
+
+    'node' => [
+        'url' => env('NODE_SERVICE_URL', 'http://localhost:3000'),
+    ],
+
 ];
