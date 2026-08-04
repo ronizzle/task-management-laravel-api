@@ -95,7 +95,7 @@ View at `http://localhost:8000/api/documentation`. The generated spec (`storage/
 php artisan test
 ```
 
-28 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, and task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
+33 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation), and rate limiting (login/register throttle, general API throttle, `Retry-After` header). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
 
 ## Port
 
