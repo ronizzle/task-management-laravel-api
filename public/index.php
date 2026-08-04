@@ -2,6 +2,10 @@
 
 use Illuminate\Http\Request;
 
+// Never let raw PHP warnings/notices leak into API response bodies —
+// they're still logged (log_errors stays on), just not echoed to clients.
+ini_set('display_errors', '0');
+
 define('LARAVEL_START', microtime(true));
 
 // Determine if the application is in maintenance mode...
