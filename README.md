@@ -73,6 +73,8 @@ Task status transitions: `pending → {in_progress, cancelled}`, `in_progress �
 
 **Activity log** (bonus): `GET /api/activity-logs` — Admin/Manager only (Manager scoped to own teams, Team Member forbidden). Filters: `subject_type` (`task`/`team`/`user`), `subject_id`, `team_id` (Admin only). See "Activity log" below.
 
+**Filter presets** (bonus): `GET /api/filter-presets`, `POST /api/filter-presets`, `DELETE /api/filter-presets/{id}` — any authenticated role, scoped to the caller's own presets. See "Saved filter presets" below.
+
 ## Rate limiting
 
 All `/api/*` routes are throttled via Laravel's built-in `throttle` middleware, keyed per-user (JWT) or per-IP for unauthenticated requests:
@@ -93,6 +95,10 @@ An audit trail of who did what, when, across tasks/teams/users — a dedicated `
 - Users: created, updated (before/after diff), status_changed (active/inactive toggle).
 
 `subject_type` stores a short alias (`task`/`team`/`user`) via an Eloquent morph map rather than the full class name. `GET /api/activity-logs` returns entries newest-first; Admins see everything, Managers see only entries scoped to their own teams (`team_id`), Team Members get a `403`. Covered by `tests/Feature/ActivityLogTest.php` (7 tests: task-create/status-change/delete logging with correct fields and diffs, admin sees all, manager scoped to own teams, team member forbidden, unauthenticated rejected).
+
+## Saved filter presets (bonus)
+
+Lets a user save/reuse a Tasks List filter combination (team, status, priority, assignee) instead of re-picking it every visit. `task_filter_presets` table — `user_id`, `name`, `filters` (JSON blob: `{ team_id, status, priority, assigned_to }`, all optional) — with a `(user_id, name)` uniqueness constraint so two presets of the same name collide only within the same user's own list, not globally. `FilterPresetController`: `index` returns only the caller's own presets (`$request->user()->filterPresets()`, newest first), `store` validates each filter value against the same enums as the task list endpoint, `destroy` is owner-only (`403` otherwise). Covered by `tests/Feature/FilterPresetTest.php` (8 tests: create, list is scoped to the caller, duplicate name rejected, different users can reuse a name, owner can delete, non-owner forbidden, invalid filter value rejected, unauthenticated rejected).
 
 ## Batch task operations (bonus)
 
@@ -125,7 +131,7 @@ View at `http://localhost:8000/api/documentation`. The generated spec (`storage/
 php artisan test
 ```
 
-56 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation), rate limiting (login/register throttle, general API throttle, `Retry-After` header), request/response logging (status/user/duration captured, body never logged), the activity log (write-side logging on task/team/user actions, admin-vs-manager visibility scoping, team member forbidden), real-time broadcasting (correct room/event on task/comment writes, failure isolation), and batch task operations (per-action authorization, partial-success reporting, field allowlisting). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
+64 feature tests covering auth (register/login/deactivated-account/unauthenticated), role authorization (admin/manager/team_member boundaries), task status transition validation, the internal-service-token guard, task comments (list/create/delete, team/task-access boundaries, author-or-admin delete rule, validation), rate limiting (login/register throttle, general API throttle, `Retry-After` header), request/response logging (status/user/duration captured, body never logged), the activity log (write-side logging on task/team/user actions, admin-vs-manager visibility scoping, team member forbidden), real-time broadcasting (correct room/event on task/comment writes, failure isolation), batch task operations (per-action authorization, partial-success reporting, field allowlisting), and saved filter presets (create/list/delete, per-user scoping and ownership, duplicate-name validation, invalid filter values rejected). Tests run against an in-memory SQLite database (configured in `phpunit.xml`), independent of your local dev database.
 
 ## Port
 

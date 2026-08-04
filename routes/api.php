@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BatchTaskController;
 use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\FilterPresetController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\UserController;
@@ -63,6 +64,10 @@ Route::middleware(['throttle:60,1', 'auth:api'])->group(function () {
     Route::get('/tasks/{task}/comments', [CommentController::class, 'index']);
     Route::post('/tasks/{task}/comments', [CommentController::class, 'store']);
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
+
+    Route::get('/filter-presets', [FilterPresetController::class, 'index']);
+    Route::post('/filter-presets', [FilterPresetController::class, 'store']);
+    Route::delete('/filter-presets/{filterPreset}', [FilterPresetController::class, 'destroy']);
 });
 
 Route::get('/tasks/{task}', [TaskController::class, 'show'])->middleware(['throttle:60,1', 'auth:api']);
