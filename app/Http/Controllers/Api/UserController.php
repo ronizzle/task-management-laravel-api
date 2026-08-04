@@ -104,8 +104,15 @@ class UserController extends Controller
             new OA\Response(response: 404, description: 'Not found'),
         ]
     )]
-    public function show(User $user): JsonResponse
+    public function show(Request $request, User $user): JsonResponse
     {
+        // Include team memberships when a user views their own record, so
+        // the frontend can discover "my teams" without a dedicated
+        // endpoint (team_members can't call GET /api/teams).
+        if ($request->user()?->id === $user->id) {
+            $user->load('teams:id,name');
+        }
+
         return response()->json($user);
     }
 
