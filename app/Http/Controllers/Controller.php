@@ -9,6 +9,7 @@ use OpenApi\Attributes as OA;
     title: 'Task Management API',
     description: 'Laravel REST API for the Task Management & Analytics Platform — auth, users, teams, and tasks.'
 )]
+#[OA\Server(url: 'https://task-management-laravel-api-jryf.onrender.com', description: 'Production')]
 #[OA\Server(url: 'http://localhost:8000', description: 'Local')]
 #[OA\SecurityScheme(
     securityScheme: 'bearerAuth',
