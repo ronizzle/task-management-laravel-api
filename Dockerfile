@@ -16,4 +16,5 @@ EXPOSE 8000
 
 CMD php artisan migrate --force \
     && php artisan config:cache \
+    && php artisan l5-swagger:generate \
     && php artisan serve --host 0.0.0.0 --port ${PORT:-8000}
