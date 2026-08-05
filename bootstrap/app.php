@@ -27,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'internal.or.jwt' => EnsureInternalOrJwt::class,
         ]);
 
+        $middleware->trustProxies(at: '*');
+
         $middleware->redirectGuestsTo(fn () => null);
 
         $middleware->api(append: [
