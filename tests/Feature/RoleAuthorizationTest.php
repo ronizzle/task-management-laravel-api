@@ -107,4 +107,42 @@ class RoleAuthorizationTest extends TestCase
             ->deleteJson("/api/tasks/{$task->id}")
             ->assertStatus(204);
     }
+
+    public function test_team_member_cannot_reassign_own_task_via_update(): void
+    {
+        $member = User::factory()->create();
+        $otherMember = User::factory()->create();
+        $team = Team::factory()->create(['created_by' => $member->id]);
+        $team->members()->attach([$member->id, $otherMember->id], ['role' => 'member']);
+        $task = Task::factory()->create([
+            'team_id' => $team->id,
+            'created_by' => $member->id,
+            'assigned_to' => $member->id,
+        ]);
+
+        $this->withHeaders($this->authHeaders($member))
+            ->patchJson("/api/tasks/{$task->id}", ['assigned_to' => $otherMember->id])
+            ->assertStatus(403);
+
+        $this->assertDatabaseHas('tasks', ['id' => $task->id, 'assigned_to' => $member->id]);
+    }
+
+    public function test_manager_can_reassign_task_via_update(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $member = User::factory()->create();
+        $team = Team::factory()->create(['created_by' => $manager->id]);
+        $team->members()->attach([$manager->id, $member->id], ['role' => 'member']);
+        $task = Task::factory()->create([
+            'team_id' => $team->id,
+            'created_by' => $manager->id,
+            'assigned_to' => null,
+        ]);
+
+        $this->withHeaders($this->authHeaders($manager))
+            ->patchJson("/api/tasks/{$task->id}", ['assigned_to' => $member->id])
+            ->assertOk();
+
+        $this->assertDatabaseHas('tasks', ['id' => $task->id, 'assigned_to' => $member->id]);
+    }
 }

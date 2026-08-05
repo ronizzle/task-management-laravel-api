@@ -155,6 +155,10 @@ class TaskController extends Controller
     {
         $this->assertCanEdit($request, $task);
 
+        if (array_key_exists('assigned_to', $request->validated())) {
+            $this->assertCanAssign($request, $task);
+        }
+
         $before = $task->only(array_keys($request->validated()));
         $task->update($request->validated());
 
