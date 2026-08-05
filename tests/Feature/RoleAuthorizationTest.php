@@ -127,6 +127,45 @@ class RoleAuthorizationTest extends TestCase
         $this->assertDatabaseHas('tasks', ['id' => $task->id, 'assigned_to' => $member->id]);
     }
 
+    public function test_team_member_cannot_view_another_users_record(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+
+        $this->withHeaders($this->authHeaders($member))
+            ->getJson("/api/users/{$other->id}")
+            ->assertStatus(403);
+    }
+
+    public function test_team_member_can_view_own_record(): void
+    {
+        $member = User::factory()->create();
+
+        $this->withHeaders($this->authHeaders($member))
+            ->getJson("/api/users/{$member->id}")
+            ->assertOk()
+            ->assertJsonPath('id', $member->id);
+    }
+
+    public function test_admin_can_view_another_users_record(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $other = User::factory()->create();
+
+        $this->withHeaders($this->authHeaders($admin))
+            ->getJson("/api/users/{$other->id}")
+            ->assertOk();
+    }
+
+    public function test_internal_service_can_view_any_users_record(): void
+    {
+        $other = User::factory()->create();
+
+        $this->withHeaders(['X-Internal-Token' => config('services.internal.token')])
+            ->getJson("/api/users/{$other->id}")
+            ->assertOk();
+    }
+
     public function test_manager_can_reassign_task_via_update(): void
     {
         $manager = User::factory()->manager()->create();

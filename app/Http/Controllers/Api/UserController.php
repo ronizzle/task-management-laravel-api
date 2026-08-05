@@ -114,10 +114,28 @@ class UserController extends Controller
     )]
     public function show(Request $request, User $user): JsonResponse
     {
+        $requester = $request->user();
+        $isSelf = $requester?->id === $user->id;
+
+        // Team members may only view their own record; Admin/Manager may
+        // view anyone, matching the role restriction on the rest of
+        // Module 2's user-management endpoints. Node's cron jobs (daily
+        // digest, deadline reminders) hit this route as a trusted system
+        // actor via the internal token to look up arbitrary users' emails —
+        // same bypass EnsureRole grants them.
+        if (
+            ! $request->attributes->get('is_internal_service')
+            && ! $isSelf
+            && ! $requester?->isAdmin()
+            && ! $requester?->isManager()
+        ) {
+            abort(403, 'You may only view your own user record.');
+        }
+
         // Include team memberships when a user views their own record, so
         // the frontend can discover "my teams" without a dedicated
         // endpoint (team_members can't call GET /api/teams).
-        if ($request->user()?->id === $user->id) {
+        if ($isSelf) {
             $user->load('teams:id,name');
         }
 
