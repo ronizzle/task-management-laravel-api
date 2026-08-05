@@ -10,6 +10,7 @@ use App\Http\Requests\Task\UpdateTaskStatusRequest;
 use App\Models\Task;
 use App\Models\Team;
 use App\Services\ActivityLogger;
+use App\Services\NotificationDispatcher;
 use App\Services\RealtimeBroadcaster;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -109,6 +110,14 @@ class TaskController extends Controller
         );
 
         RealtimeBroadcaster::broadcast("team:{$team->id}", 'task_created', $task->toArray());
+
+        if ($task->assigned_to) {
+            NotificationDispatcher::dispatch($task, $task->assigned_to, 'task_assigned', [
+                'title' => $task->title,
+                'priority' => $task->priority,
+                'due_date' => $task->due_date,
+            ]);
+        }
 
         return response()->json($task, 201);
     }
@@ -254,6 +263,14 @@ class TaskController extends Controller
         $statusPayload = ['id' => $task->id, 'status' => $newStatus, 'previous_status' => $oldStatus];
         RealtimeBroadcaster::broadcast("task:{$task->id}", 'task_status_changed', $statusPayload);
         RealtimeBroadcaster::broadcast("team:{$task->team_id}", 'task_status_changed', $statusPayload);
+
+        if ($task->assigned_to) {
+            NotificationDispatcher::dispatch($task, $task->assigned_to, 'task_status_changed', [
+                'title' => $task->title,
+                'from_status' => $oldStatus,
+                'to_status' => $newStatus,
+            ]);
+        }
 
         return response()->json($task);
     }

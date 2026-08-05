@@ -54,8 +54,8 @@ class RealtimeBroadcastTest extends TestCase
             ->patchJson("/api/tasks/{$task->id}/status", ['status' => Task::STATUS_IN_PROGRESS])
             ->assertOk();
 
-        Http::assertSent(fn ($request) => $request['room'] === "task:{$task->id}" && $request['event'] === 'task_status_changed');
-        Http::assertSent(fn ($request) => $request['room'] === "team:{$team->id}" && $request['event'] === 'task_status_changed');
+        Http::assertSent(fn ($request) => isset($request['room']) && $request['room'] === "task:{$task->id}" && $request['event'] === 'task_status_changed');
+        Http::assertSent(fn ($request) => isset($request['room']) && $request['room'] === "team:{$team->id}" && $request['event'] === 'task_status_changed');
     }
 
     public function test_posting_a_comment_broadcasts_comment_created_to_the_task_room(): void
