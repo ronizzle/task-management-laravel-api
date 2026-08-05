@@ -74,11 +74,13 @@ return [
         ],
 
         'api' => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/api.log'),
+            'driver' => 'monolog',
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
-            'replace_placeholders' => true,
+            'handler' => StreamHandler::class,
+            'with' => [
+                'stream' => 'php://stderr',
+            ],
+            'processors' => [PsrLogMessageProcessor::class],
         ],
 
         'slack' => [
